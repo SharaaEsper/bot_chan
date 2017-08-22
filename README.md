@@ -1,3 +1,3 @@
 It's a bot yay.
 
-Stuff will go here soon.
+It does quotebot stuff and karma tracking. The leaderboard stuff requires at least 5 things to exist. 

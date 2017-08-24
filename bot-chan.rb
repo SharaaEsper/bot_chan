@@ -76,16 +76,21 @@ class BotChan < SlackRubyBot::Bot
 
   #This exists in case the quote DB is modified directly, to make sure the IDs aren't out of sync
   match /^!reparsequotedb/ do |client, data, match|
-  yml = YAML.load_file 'quotes.yml'
-  yml2 = {}
-  File.open("quotes.yml", "w") do |file|
-    yml.keys.each_with_index do |var,i|
-      yml2[i] = yml[var]
+    yml = YAML.load_file 'quotes.yml'
+    yml2 = {}
+    File.open("quotes.yml", "w") do |file|
+      yml.keys.each_with_index do |var,i|
+        yml2[i] = yml[var]
+      end
+      file.write(yml2.to_yaml)
     end
-    file.write(yml2.to_yaml)
+    r.size = yml.size
+    client.say(channel:data.channel, text: "Reparsed DB")
   end
-  r.size = yml.size
-  client.say(channel:data.channel, text: "Reparsed DB")
+
+  #Lewd.png
+  match /^!infidel/ do |client, data, match|
+    client.say(channel:data.channel, text: "http://i0.kym-cdn.com/photos/images/original/000/690/931/412.png")
   end
 
   #Karma Change
@@ -101,7 +106,7 @@ class BotChan < SlackRubyBot::Bot
         end
         file.write(yml.to_yaml)
       end
-      client.say(channel:data.channel, text:"#{name} new karma count #{yml[name]}")
+      client.say(channel:data.channel, text:"#{name} new karma count: #{yml[name]}")
     else
       client.say(channel:data.channel, text:"That's not allowed #{match[:name]} :grumpy_cat:") #grumpy_cat for people trying to mess with their own karma.
     end

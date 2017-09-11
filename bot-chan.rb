@@ -5,11 +5,49 @@ require 'rubygems'
 require 'slack-ruby-bot'
 require 'yaml'
 require './random.rb'
+require 'securerandom'
 
 
 
 
 class BotChan < SlackRubyBot::Bot
+
+  help do
+    title "Bot-Chan"
+    desc "This bot does bot things and likes headpats."
+
+    command "!quote" do
+      desc "!quote [<id>] - gets a quote"
+      long_desc "!quote [<id>] - gets a quote. ID is optional, and will get a random quote if the ID is not found or not specified."
+    end
+
+    command "!grepquote" do
+      desc "!grepquote <query> - searches for a quote"
+      long_desc "!grepquote <query> - searches for a quote. <query> is mandatory, and supports regex. If more then 10 results are found it will tell you to limit your search further"
+    end
+
+    command "!addquote" do
+      desc "!addquote <quote> - Adds a quote to the DB."
+      long_desc "!addquote <quote> - Adds a quote to the DB. You can also call this command with !quoteadd"
+    end
+
+    command "!deletequote" do
+      desc "!deletequote <id> - Deletes a quote"
+      long_desc "!deletequote <id> - Deletes a quote. This will reply back with a verification command, you will need to use the verification to finish quote deletion."
+    end
+
+    command "!infidel" do
+      desc "!infidel replies with an image macro for someone being lewd."
+    end
+
+    command "karma" do
+      desc "Karma can be increased or descreased with the ++ or -- operators on any user or object. See help karma for additional details."
+      long_desc "Using @user++ or thing-- will increase or descrease their karma.\n You can check current karma leader/loserboards with karma best|worst. \n You can check the leader/loserboards of user/things specficially with karma best/worst user/thing."
+    end
+  end
+
+
+
   #Seed RNG
   tempyaml = YAML.load_file 'quotes.yml'
   r = Rand.new(tempyaml.size)
@@ -74,6 +112,61 @@ class BotChan < SlackRubyBot::Bot
   	client.say(channel:data.channel, text:"Quote had been added as Quote ID #{size}!")
   end
 
+  #Remove quote start
+  match /^!deletequote (?<qid>.*)$/ do |client, data, match|
+    yml = YAML.load_file 'quotes.yml'
+    if match[:qid].nil? #Tell them they're dumb
+      client.say(channel:data.channel, text:"Quote #{match[:qid]} does not exist")
+    else
+      num = match[:qid].to_i
+      if num < 0 #Check for negative number
+        num = yml.count + match[:qid].to_i
+      end
+      pending = YAML.load_file 'pending_deletes.yml'
+      uuid = SecureRandom.uuid
+      pending[match[:qid].to_i] = uuid
+      File.open("pending_deletes.yml", "w") do |file|
+        file.write(pending.to_yaml)
+      end
+      client.say(channel:data.channel, text:"Quote #{match[:qid]} is now pending deletion, use !deletequote_verify #{uuid} to confirm this")
+    end
+  end
+
+  #Verify UUID
+  match /^!deletequote_verify (?<uuid>.*)$/ do |client, data, match|
+    pending = YAML.load_file 'pending_deletes.yml'
+    verify_success = false
+    pending.each_pair do |key, value|
+      if value.downcase =~ /#{match[:uuid]}/
+        yml = YAML.load_file 'quotes.yml'
+        yml.delete(key)
+        File.open("quotes.yml", "w") do |file|
+          file.write(yml.to_yaml)
+        end
+        client.say(channel:data.channel, text:"UUID verified, #{key} has been deleted")
+        pending = Hash.new
+        pending["foo"] = "bar"
+        File.open("pending_deletes.yml", "w") do |file|
+          file.write(pending.to_yaml) #We clear out the existing DB as the current IDs are now worthless
+        end
+        yml = YAML.load_file 'quotes.yml'
+        yml2 = {}
+        File.open("quotes.yml", "w") do |file|
+          yml.keys.each_with_index do |var,i|
+            yml2[i] = yml[var]
+          end
+          file.write(yml2.to_yaml)
+        end
+        r.size = yml.size
+        verify_success = true
+      end
+    end
+    if ! verify_success
+      client.say(channel:data.channel, text:"#{match[:uuid]} not found")
+    end
+  end
+
+
   #This exists in case the quote DB is modified directly, to make sure the IDs aren't out of sync
   match /^!reparsequotedb/ do |client, data, match|
     yml = YAML.load_file 'quotes.yml'
@@ -88,7 +181,7 @@ class BotChan < SlackRubyBot::Bot
     client.say(channel:data.channel, text: "Reparsed DB")
   end
 
-  #Lewd.png
+  #Infidel is lewd
   match /^!infidel/ do |client, data, match|
     client.say(channel:data.channel, text: "http://i0.kym-cdn.com/photos/images/original/000/690/931/412.png")
   end

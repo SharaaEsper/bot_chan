@@ -112,20 +112,6 @@ class BotChan < SlackRubyBot::Bot
   	client.say(channel:data.channel, text:"Quote had been added as Quote ID #{size}!")
   end
 
-  #Adds quote on pinned message
-  match /.*/ do |client, data, match| #Inspect every message
-    if ! data["subtype"].nil? && data["subtype"] == 'pinned_item' #If it's a pinned_item we care about it
-      yml = YAML.load_file 'quotes.yml'
-      size = yml.size
-      File.open("quotes.yml", "w") do |file|
-        yml[size] = data.attachments[0]["fallback"]
-        file.write(yml.to_yaml)
-        end
-      r.size = yml.size
-      client.say(channel:data.channel, text:"Quote had been added as Quote ID #{size}!")
-    end
-  end
-
   #Remove quote start
   match /^!deletequote (?<qid>.*)$/ do |client, data, match|
     yml = YAML.load_file 'quotes.yml'
@@ -306,6 +292,19 @@ class BotChan < SlackRubyBot::Bot
           client.say(channel:data.channel, text:"Usage: bot-chan karma <best>|<worst> [<user>|<thing>]\nUsage: bot-chan karma <user>|<thing>")
         end
       end
+    end
+  end
+  #Adds quote on pinned message
+  match /<@\w+> pinned a message to this channel\.$/ do |client, data, match| #Inspect every message
+    if ! data["subtype"].nil? && data["subtype"] == 'pinned_item' #If it's a pinned_item we care about it
+      yml = YAML.load_file 'quotes.yml'
+      size = yml.size
+      File.open("quotes.yml", "w") do |file|
+        yml[size] = data.attachments[0]["fallback"]
+        file.write(yml.to_yaml)
+        end
+      r.size = yml.size
+      client.say(channel:data.channel, text:"Quote had been added as Quote ID #{size}!")
     end
   end
 end

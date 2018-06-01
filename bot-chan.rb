@@ -321,7 +321,6 @@ class BotChan < SlackRubyBot::Bot
       client.say(channel:data.channel, text:"Quote had been added as Quote ID #{size}!")
     end
   end
-<<<<<<< HEAD
  #Allow users to set aliases
   match /^!alias ?(?<user_alias>.*)$/ do |client, data, match|
     url = URI.parse("https://slack.com/api/users.info?token=#{ENV['SLACK_API_TOKEN']}&user=#{data.user}") #Fuck this SDK
@@ -344,9 +343,5 @@ class BotChan < SlackRubyBot::Bot
     end
     client.say(channel:data.channel, text:"#{user_alias} has been mapped to <@#{data.user}>")
   end
-
-
-=======
->>>>>>> 319c8382507be0b86f454cd5982626f64aba933b
 end
 BotChan.run

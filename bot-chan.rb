@@ -6,8 +6,8 @@ require 'slack-ruby-bot'
 require 'yaml'
 require './random.rb'
 require 'securerandom'
-
-
+require 'net/https'
+require 'json'
 
 
 class BotChan < SlackRubyBot::Bot
@@ -43,6 +43,10 @@ class BotChan < SlackRubyBot::Bot
     command "karma" do
       desc "Karma can be increased or descreased with the ++ or -- operators on any user or object. See help karma for additional details."
       long_desc "Using @user++ or thing-- will increase or descrease their karma.\n You can check current karma leader/loserboards with karma best|worst. \n You can check the leader/loserboards of user/things specficially with karma best/worst user/thing."
+    end
+
+    command "!alias" do
+      desc "!alias [<alias>] - registers the alias to your UID. If no alias is supplied your displayname is used."
     end
   end
 
@@ -188,8 +192,14 @@ class BotChan < SlackRubyBot::Bot
 
   #Karma Change
   match /(?<name><?@?\w+>?)(?<op>\+\+|--)/ do |client, data, match|
-    if "<@#{data.user}>" != match[:name] #Don't let someone change their own karma
-      name = match[:name]
+    alias_yml = YAML.load_file 'users.yml'
+    name = String.new
+    if alias_yml.has_key?(match[:name].downcase) #See if an alias exists
+       name  = alias_yml[match[:name]]
+    else
+      name = match[:name]     
+    end
+    if "<@#{data.user}>" != name #Don't let someone change their own karma
       yml = YAML.load_file 'karma.yml'
       File.open('karma.yml', 'w') do |file|
         if match[:op] == '++'
@@ -201,7 +211,7 @@ class BotChan < SlackRubyBot::Bot
       end
       client.say(channel:data.channel, text:"#{name} new karma count: #{yml[name]}")
     else
-      client.say(channel:data.channel, text:"That's not allowed #{match[:name]} :grumpy_cat:") #grumpy_cat for people trying to mess with their own karma.
+      client.say(channel:data.channel, text:"That's not allowed #{name} :grumpy_cat:") #grumpy_cat for people trying to mess with their own karma.
     end
   end
 
@@ -213,6 +223,10 @@ class BotChan < SlackRubyBot::Bot
     else
       exparr = match['expression'].split #mark args an array
       if exparr[1].nil?
+        alias_yml = YAML.load_file 'users.yml'
+        if alias_yml.has_key?(exparr[0].downcase)
+          exparr[0] = alias_yml[exparr[0].downcase] #We want to check the UID and not the alias, so override the array value
+        end
         yml = YAML.load_file 'karma.yml'
         if exparr[0] == "best"
           sorted = yml.sort_by { |user, karma| karma }
@@ -307,5 +321,32 @@ class BotChan < SlackRubyBot::Bot
       client.say(channel:data.channel, text:"Quote had been added as Quote ID #{size}!")
     end
   end
+<<<<<<< HEAD
+ #Allow users to set aliases
+  match /^!alias ?(?<user_alias>.*)$/ do |client, data, match|
+    url = URI.parse("https://slack.com/api/users.info?token=#{ENV['SLACK_API_TOKEN']}&user=#{data.user}") #Fuck this SDK
+    req = Net::HTTP::Get.new(url)
+    username = String.new
+    Net::HTTP.start(url.host, url.port, :use_ssl => true) do |http|
+    	res = http.request(req)
+        username = JSON.load(res.body)['user']['name']
+    end
+    user_alias = String.new
+    if match[:user_alias].empty?
+      user_alias = username
+    else
+      user_alias = match[:user_alias]
+    end
+    yml = YAML.load_file 'users.yml'
+    yml[user_alias] = "<@#{data.user}>" #PUt it in the syntax for pinging people
+    File.open("users.yml", "w") do |file|
+      file.write(yml.to_yaml)
+    end
+    client.say(channel:data.channel, text:"#{user_alias} has been mapped to <@#{data.user}>")
+  end
+
+
+=======
+>>>>>>> 319c8382507be0b86f454cd5982626f64aba933b
 end
 BotChan.run
